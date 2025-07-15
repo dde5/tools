@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>複利計算機</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+        .tab-button {
+            transition: all 0.3s ease;
+        }
+        .tab-button.active {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        /* For the toggle switch */
+        .toggle-label {
+            width: 100px; /* Fixed width for the label */
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-8">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800 text-center mb-6">複利計算機</h1>
+
+        <!-- Tabs -->
+        <div class="mb-6 border-b border-gray-200">
+            <nav class="flex space-x-4" aria-label="Tabs">
+                <button id="tab-scenario" class="tab-button active text-sm md:text-base font-medium py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                    情境試算
+                </button>
+                <button id="tab-general" class="tab-button text-sm md:text-base font-medium py-3 px-4 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                    通用計算機
+                </button>
+            </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <div id="content-scenario">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h2 class="text-lg font-bold text-blue-800 mb-2">您的案例分析</h2>
+                <p class="text-sm text-blue-700">
+                    設定每月投入金額、持續年期、停止投入後的成長年期，以及最終的月提領目標，反推出需要多少年化報酬率才能達成。
+                </p>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Inputs for the scenario -->
+                <div>
+                    <label for="monthlyInvestment" class="block text-sm font-medium text-gray-700">每月投資金額 (元)</label>
+                    <input type="number" id="monthlyInvestment" value="10000" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="investmentYears" class="block text-sm font-medium text-gray-700">持續投資年期 (年)</label>
+                    <input type="number" id="investmentYears" value="15" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="growthYears" class="block text-sm font-medium text-gray-700">停止投資後，繼續成長年期 (年)</label>
+                    <input type="number" id="growthYears" value="10" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="monthlyWithdrawal" class="block text-sm font-medium text-gray-700">目標每月提領金額 (元)</label>
+                    <input type="number" id="monthlyWithdrawal" value="50000" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-center mt-6">
+                <span class="mr-3 text-sm font-medium text-gray-700">每月投入時間點:</span>
+                <div class="flex items-center p-1 bg-gray-200 rounded-full">
+                    <button id="toggleDueScenario" class="toggle-label px-3 py-1 text-sm font-medium rounded-full bg-white text-blue-600 shadow">期初投入</button>
+                    <button id="toggleOrdinaryScenario" class="toggle-label px-3 py-1 text-sm font-medium rounded-full text-gray-600">期末投入</button>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <button id="calculateRate" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300">
+                    計算所需年化報酬率
+                </button>
+            </div>
+
+            <div id="rateResult" class="mt-6 text-center hidden">
+                <p class="text-gray-600">要達成此目標，您需要的年化報酬率約為：</p>
+                <p id="rateValue" class="text-3xl md:text-4xl font-bold text-blue-600 my-2"></p>
+                <p class="text-sm text-gray-500">這代表在最終年底，您的總資產約需達到 <strong id="finalCapital"></strong> 元。</p>
+            </div>
+             <div id="rateError" class="mt-4 text-center text-red-600 font-medium hidden"></div>
+
+            <!-- Annual Breakdown Table -->
+            <div id="breakdownSection" class="mt-8 hidden">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">年度明細</h3>
+                <div class="overflow-x-auto bg-gray-50 rounded-lg border max-h-96">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-100 sticky top-0">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">年度</th>
+                                <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">當年度投入本金</th>
+                                <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">當年度複利收益</th>
+                                <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">年底總資產</th>
+                            </tr>
+                        </thead>
+                        <tbody id="breakdownTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Rows will be inserted here by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-general" class="hidden">
+            <h2 class="text-lg font-bold text-gray-800 mb-4">通用複利計算</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="initialPrincipal" class="block text-sm font-medium text-gray-700">初始本金 (元)</label>
+                    <input type="number" id="initialPrincipal" value="0" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label for="monthlyContribution" class="block text-sm font-medium text-gray-700">每月投入 (元)</label>
+                    <input type="number" id="monthlyContribution" value="10000" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label for="annualRate" class="block text-sm font-medium text-gray-700">年化報酬率 (%)</label>
+                    <input type="number" id="annualRate" value="8" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label for="periodYears" class="block text-sm font-medium text-gray-700">持續投入年期 (年)</label>
+                    <input type="number" id="periodYears" value="15" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                 <div>
+                    <label for="generalGrowthYears" class="block text-sm font-medium text-gray-700">停止投入後，繼續成長年期 (年)</label>
+                    <input type="number" id="generalGrowthYears" value="0" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-center mt-6">
+                <span class="mr-3 text-sm font-medium text-gray-700">每月投入時間點:</span>
+                <div class="flex items-center p-1 bg-gray-200 rounded-full">
+                    <button id="toggleDueGeneral" class="toggle-label px-3 py-1 text-sm font-medium rounded-full bg-white text-indigo-600 shadow">期初投入</button>
+                    <button id="toggleOrdinaryGeneral" class="toggle-label px-3 py-1 text-sm font-medium rounded-full text-gray-600">期末投入</button>
+                </div>
+            </div>
+
+
+            <div class="mt-6">
+                <button id="calculateFV" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-300">
+                    計算未來總值
+                </button>
+            </div>
+
+            <div id="fvResult" class="mt-6 text-center hidden">
+                <p class="text-gray-600">在 <span id="yearResult"></span> 年後，您的資產總值約為：</p>
+                <p id="fvValue" class="text-3xl md:text-4xl font-bold text-indigo-600 my-2"></p>
+                <div class="text-sm text-gray-500 space-y-1">
+                    <p>總投入本金：<strong id="totalPrincipal"></strong> 元</p>
+                    <p>複利總收益：<strong id="totalInterest"></strong> 元</p>
+                </div>
+            </div>
+            
+            <div id="fvChartContainer" class="mt-8 hidden">
+                <canvas id="fvChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let fvChartInstance = null;
+        
+        // --- Tab Navigation ---
+        const tabScenario = document.getElementById('tab-scenario');
+        const tabGeneral = document.getElementById('tab-general');
+        const contentScenario = document.getElementById('content-scenario');
+        const contentGeneral = document.getElementById('content-general');
+
+        tabScenario.addEventListener('click', () => {
+            tabScenario.classList.add('active');
+            tabGeneral.classList.remove('active');
+            contentScenario.classList.remove('hidden');
+            contentGeneral.classList.add('hidden');
+        });
+
+        tabGeneral.addEventListener('click', () => {
+            tabGeneral.classList.add('active');
+            tabScenario.classList.remove('active');
+            contentGeneral.classList.remove('hidden');
+            contentScenario.classList.add('hidden');
+        });
+
+        // --- Helper Function ---
+        const formatter = new Intl.NumberFormat('zh-TW', {
+            style: 'currency',
+            currency: 'TWD',
+            minimumFractionDigits: 0,
+        });
+
+        // --- Scenario Calculator Logic ---
+        const calculateRateBtn = document.getElementById('calculateRate');
+        const rateResultDiv = document.getElementById('rateResult');
+        const rateErrorDiv = document.getElementById('rateError');
+        const rateValueP = document.getElementById('rateValue');
+        const finalCapitalP = document.getElementById('finalCapital');
+        const breakdownSection = document.getElementById('breakdownSection');
+        const breakdownTableBody = document.getElementById('breakdownTableBody');
+        const toggleDueScenarioBtn = document.getElementById('toggleDueScenario');
+        const toggleOrdinaryScenarioBtn = document.getElementById('toggleOrdinaryScenario');
+        let isAnnuityDueScenario = true;
+
+        toggleDueScenarioBtn.addEventListener('click', () => {
+            isAnnuityDueScenario = true;
+            toggleDueScenarioBtn.classList.add('bg-white', 'text-blue-600', 'shadow');
+            toggleOrdinaryScenarioBtn.classList.remove('bg-white', 'text-blue-600', 'shadow');
+        });
+
+        toggleOrdinaryScenarioBtn.addEventListener('click', () => {
+            isAnnuityDueScenario = false;
+            toggleOrdinaryScenarioBtn.classList.add('bg-white', 'text-blue-600', 'shadow');
+            toggleDueScenarioBtn.classList.remove('bg-white', 'text-blue-600', 'shadow');
+        });
+
+        calculateRateBtn.addEventListener('click', () => {
+            rateResultDiv.classList.add('hidden');
+            rateErrorDiv.classList.add('hidden');
+            breakdownSection.classList.add('hidden');
+
+            const monthlyInvestment = parseFloat(document.getElementById('monthlyInvestment').value);
+            const investmentYears = parseFloat(document.getElementById('investmentYears').value);
+            const growthYears = parseFloat(document.getElementById('growthYears').value);
+            const monthlyWithdrawal = parseFloat(document.getElementById('monthlyWithdrawal').value);
+
+            if (isNaN(monthlyInvestment) || isNaN(investmentYears) || isNaN(growthYears) || isNaN(monthlyWithdrawal) || monthlyInvestment <= 0 || monthlyWithdrawal <= 0) {
+                rateErrorDiv.textContent = '請輸入有效的正數。';
+                rateErrorDiv.classList.remove('hidden');
+                return;
+            }
+
+            const n1 = investmentYears * 12;
+            const n2 = growthYears * 12;
+            const targetRatio = monthlyWithdrawal / monthlyInvestment;
+
+            let found = false;
+            let annualRate = 0;
+            
+            for (let r = 0.001; r < 50; r += 0.001) {
+                const i = (r / 100) / 12;
+                let annuityFactor = (Math.pow(1 + i, n1) - 1);
+                if (isAnnuityDueScenario) {
+                    annuityFactor *= (1 + i);
+                }
+                const lhs = annuityFactor * Math.pow(1 + i, n2);
+                
+                if (lhs >= targetRatio) {
+                    annualRate = r;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found) {
+                rateValueP.textContent = `${annualRate.toFixed(2)}%`;
+                const requiredCapital = monthlyWithdrawal * 12 / (annualRate / 100);
+                finalCapitalP.textContent = formatter.format(requiredCapital);
+                rateResultDiv.classList.remove('hidden');
+                
+                breakdownTableBody.innerHTML = '';
+                let currentBalance = 0;
+                const totalYears = investmentYears + growthYears;
+                const monthlyRate = (annualRate / 100) / 12;
+
+                for (let year = 1; year <= totalYears; year++) {
+                    const startOfYearBalance = currentBalance;
+                    let annualContribution = 0;
+                    
+                    if (year <= investmentYears) {
+                        annualContribution = monthlyInvestment * 12;
+                        let fvOfPrincipal = startOfYearBalance * Math.pow(1 + monthlyRate, 12);
+                        let fvOfContributions = monthlyInvestment * ((Math.pow(1 + monthlyRate, 12) - 1) / monthlyRate);
+                        if (isAnnuityDueScenario) {
+                            fvOfContributions *= (1 + monthlyRate);
+                        }
+                        currentBalance = fvOfPrincipal + fvOfContributions;
+                    } else {
+                        annualContribution = 0;
+                        currentBalance = startOfYearBalance * Math.pow(1 + monthlyRate, 12);
+                    }
+
+                    const annualReturn = currentBalance - startOfYearBalance - annualContribution;
+                    
+                    const row = document.createElement('tr');
+                    row.className = 'text-sm';
+                    row.innerHTML = `
+                        <td class="px-4 py-3 text-center text-gray-700">${year}</td>
+                        <td class="px-4 py-3 text-right text-gray-700">${formatter.format(annualContribution)}</td>
+                        <td class="px-4 py-3 text-right text-green-600">${formatter.format(annualReturn)}</td>
+                        <td class="px-4 py-3 text-right text-gray-900 font-semibold">${formatter.format(currentBalance)}</td>
+                    `;
+                    breakdownTableBody.appendChild(row);
+                }
+                breakdownSection.classList.remove('hidden');
+
+            } else {
+                rateErrorDiv.textContent = '無法在50%年利率內找到解，請確認輸入數值。';
+                rateErrorDiv.classList.remove('hidden');
+            }
+        });
+
+        // --- General Calculator Logic ---
+        const calculateFVBtn = document.getElementById('calculateFV');
+        const fvResultDiv = document.getElementById('fvResult');
+        const fvValueP = document.getElementById('fvValue');
+        const yearResultSpan = document.getElementById('yearResult');
+        const totalPrincipalP = document.getElementById('totalPrincipal');
+        const totalInterestP = document.getElementById('totalInterest');
+        const fvChartContainer = document.getElementById('fvChartContainer');
+        const toggleDueGeneralBtn = document.getElementById('toggleDueGeneral');
+        const toggleOrdinaryGeneralBtn = document.getElementById('toggleOrdinaryGeneral');
+        let isAnnuityDueGeneral = true;
+
+        toggleDueGeneralBtn.addEventListener('click', () => {
+            isAnnuityDueGeneral = true;
+            toggleDueGeneralBtn.classList.add('bg-white', 'text-indigo-600', 'shadow');
+            toggleOrdinaryGeneralBtn.classList.remove('bg-white', 'text-indigo-600', 'shadow');
+        });
+
+        toggleOrdinaryGeneralBtn.addEventListener('click', () => {
+            isAnnuityDueGeneral = false;
+            toggleOrdinaryGeneralBtn.classList.add('bg-white', 'text-indigo-600', 'shadow');
+            toggleDueGeneralBtn.classList.remove('bg-white', 'text-indigo-600', 'shadow');
+        });
+
+
+        calculateFVBtn.addEventListener('click', () => {
+            const initial = parseFloat(document.getElementById('initialPrincipal').value) || 0;
+            const monthly = parseFloat(document.getElementById('monthlyContribution').value) || 0;
+            const annualRate = parseFloat(document.getElementById('annualRate').value) || 0;
+            const periodYears = parseFloat(document.getElementById('periodYears').value) || 0;
+            const growthYears = parseFloat(document.getElementById('generalGrowthYears').value) || 0;
+
+            const monthlyRate = (annualRate / 100) / 12;
+            const n_contrib = periodYears * 12;
+            const n_growth = growthYears * 12;
+
+            // FV at end of contribution period
+            const fvInitial_contrib = initial * Math.pow(1 + monthlyRate, n_contrib);
+            let fvAnnuity = monthly * ((Math.pow(1 + monthlyRate, n_contrib) - 1) / monthlyRate);
+            if (isAnnuityDueGeneral) { fvAnnuity *= (1 + monthlyRate); }
+            const fv_at_contrib_end = fvInitial_contrib + fvAnnuity;
+
+            // FV at final time after growth period
+            const totalFv = fv_at_contrib_end * Math.pow(1 + monthlyRate, n_growth);
+
+            const totalPrincipal = initial + (monthly * n_contrib);
+            const totalInterest = totalFv - totalPrincipal;
+            const totalYears = periodYears + growthYears;
+
+            yearResultSpan.textContent = totalYears;
+            fvValueP.textContent = formatter.format(totalFv);
+            totalPrincipalP.textContent = formatter.format(totalPrincipal);
+            totalInterestP.textContent = formatter.format(totalInterest);
+            fvResultDiv.classList.remove('hidden');
+            
+            // --- Chart Generation ---
+            const labels = Array.from({ length: totalYears + 1 }, (_, i) => `第 ${i} 年`);
+            const principalData = [];
+            const compoundData = [];
+            const simpleData = [];
+
+            let compoundBalance = initial;
+            let simpleBalance = initial;
+            let currentPrincipal = initial;
+
+            principalData.push(currentPrincipal);
+            compoundData.push(compoundBalance);
+            simpleData.push(simpleBalance);
+
+            for (let y = 1; y <= totalYears; y++) {
+                let annualContribution = 0;
+                let simpleInterestForYear = 0;
+                
+                if (y <= periodYears) {
+                    annualContribution = monthly * 12;
+                    simpleInterestForYear = (initial + (monthly * 12 * (y - 1))) * (annualRate / 100);
+                    
+                    let compoundStartOfYear = compoundBalance;
+                    let fvOfPrincipal_yr = compoundStartOfYear * Math.pow(1 + monthlyRate, 12);
+                    let fvOfAnnuity_yr = monthly * ((Math.pow(1 + monthlyRate, 12) - 1) / monthlyRate);
+                    if(isAnnuityDueGeneral) {
+                        fvOfAnnuity_yr *= (1 + monthlyRate);
+                    }
+                    compoundBalance = fvOfPrincipal_yr + fvOfAnnuity_yr;
+                } else {
+                    annualContribution = 0;
+                    const fixedPrincipal = initial + (monthly * 12 * periodYears);
+                    simpleInterestForYear = fixedPrincipal * (annualRate / 100);
+                    compoundBalance *= Math.pow(1 + monthlyRate, 12);
+                }
+                
+                currentPrincipal += annualContribution;
+                simpleBalance += annualContribution + simpleInterestForYear;
+
+                principalData.push(currentPrincipal);
+                simpleData.push(simpleBalance);
+                compoundData.push(compoundBalance);
+            }
+            
+            updateChart(labels, principalData, simpleData, compoundData);
+            fvChartContainer.classList.remove('hidden');
+        });
+
+        function updateChart(labels, principalData, simpleData, compoundData) {
+            const ctx = document.getElementById('fvChart').getContext('2d');
+            if (fvChartInstance) {
+                fvChartInstance.destroy();
+            }
+            fvChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '複利總額',
+                        data: compoundData,
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        fill: true,
+                        tension: 0.1
+                    }, {
+                        label: '單利總額',
+                        data: simpleData,
+                        borderColor: '#16a34a',
+                        backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                        fill: false,
+                        tension: 0.1
+                    }, {
+                        label: '總投入本金',
+                        data: principalData,
+                        borderColor: '#f97316',
+                        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                        fill: false,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '資產成長曲線'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += formatter.format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    return formatter.format(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Trigger initial calculation for the scenario
+        calculateRateBtn.click();
+    </script>
+</body>
+</html>
