@@ -164,8 +164,8 @@
                 </div>
             </div>
             
-            <!-- FIX: Added 'relative' class to the container div -->
-            <div id="fvChartContainer" class="mt-8 hidden relative">
+            <!-- FIX 1: Added 'relative' and aspect-ratio classes -->
+            <div id="fvChartContainer" class="mt-8 hidden relative aspect-[2/1] md:aspect-[2.5/1]">
                 <canvas id="fvChart"></canvas>
             </div>
         </div>
@@ -448,6 +448,8 @@
                 },
                 options: {
                     responsive: true,
+                    // FIX 2: Tell Chart.js to fill the container, not maintain its own aspect ratio
+                    maintainAspectRatio: false,
                     plugins: {
                         title: {
                             display: true,
@@ -482,7 +484,9 @@
         }
         
         // Trigger initial calculation for the scenario
-        calculateRateBtn.click();
+        document.addEventListener('DOMContentLoaded', () => {
+            calculateRateBtn.click();
+        });
     </script>
 </body>
 </html>
