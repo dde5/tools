@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>車禍和解書產生器 (台灣版)</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Signature Pad -->
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <!-- PDF Generation Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f3f4f6; }
+        .canvas-box { border: 2px dashed #cbd5e1; background: #fff; border-radius: 8px; touch-action: none; }
+        /* Hide preview during editing */
+        #preview-area { display: none; }
+        /* Loader */
+        .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #3498db; width: 30px; height: 30px; animation: spin 1s linear infinite; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="pb-20">
+
+<div class="max-w-md mx-auto bg-white min-h-screen shadow-lg">
+    <!-- Header -->
+    <div class="bg-blue-600 text-white p-4 sticky top-0 z-10 flex justify-between items-center">
+        <h1 class="text-lg font-bold">車禍和解書產生器</h1>
+        <div id="loader" class="loader"></div>
+    </div>
+
+    <form id="settlementForm" class="p-4 space-y-6">
+        
+        <!-- 1. 事故基本資料 -->
+        <div class="space-y-3">
+            <h2 class="text-blue-600 font-bold text-xl border-b pb-2">1. 事故資訊</h2>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">發生時間</label>
+                <input type="datetime-local" id="incidentTime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 p-2 border" required>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">發生地點</label>
+                <div class="flex gap-2">
+                    <input type="text" id="incidentLocation" placeholder="例：台北市信義區基隆路一段..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 p-2 border" required>
+                    <button type="button" onclick="getLocation()" class="mt-1 bg-green-500 text-white px-3 rounded shadow">📍定位</button>
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700">事故類型 (選填)</label>
+                <select id="incidentType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 p-2 border">
+                    <option value="車輛擦撞">車輛擦撞</option>
+                    <option value="追撞前方車輛">追撞前方車輛</option>
+                    <option value="變換車道不當">變換車道不當</option>
+                    <option value="倒車碰撞">倒車碰撞</option>
+                    <option value="路口交岔撞擊">路口交岔撞擊</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 2. 當事人資料 -->
+        <div class="space-y-4">
+            <h2 class="text-blue-600 font-bold text-xl border-b pb-2">2. 當事人資料</h2>
+            
+            <div class="bg-blue-50 p-3 rounded-lg">
+                <h3 class="font-bold text-blue-800 mb-2">甲方 (當事人 A)</h3>
+                <input type="text" id="nameA" placeholder="姓名" class="w-full mb-2 p-2 border rounded" required>
+                <input type="text" id="idA" placeholder="身分證字號" class="w-full mb-2 p-2 border rounded" required>
+                <input type="text" id="plateA" placeholder="車牌號碼 (若有)" class="w-full mb-2 p-2 border rounded">
+                <input type="tel" id="phoneA" placeholder="聯絡電話" class="w-full p-2 border rounded">
+            </div>
+
+            <div class="bg-gray-100 p-3 rounded-lg">
+                <h3 class="font-bold text-gray-800 mb-2">乙方 (當事人 B)</h3>
+                <input type="text" id="nameB" placeholder="姓名" class="w-full mb-2 p-2 border rounded" required>
+                <input type="text" id="idB" placeholder="身分證字號" class="w-full mb-2 p-2 border rounded" required>
+                <input type="text" id="plateB" placeholder="車牌號碼 (若有)" class="w-full mb-2 p-2 border rounded">
+                <input type="tel" id="phoneB" placeholder="聯絡電話" class="w-full p-2 border rounded">
+            </div>
+        </div>
+
+        <!-- 3. 和解條件 -->
+        <div class="space-y-4">
+            <h2 class="text-blue-600 font-bold text-xl border-b pb-2">3. 和解條件</h2>
+            
+            <div class="grid grid-cols-3 gap-2">
+                <button type="button" onclick="setMode('A_PAY_B')" id="btnAPayB" class="mode-btn border p-2 rounded text-center text-sm hover:bg-blue-100 focus:ring active:bg-blue-200">甲方 賠 乙方</button>
+                <button type="button" onclick="setMode('B_PAY_A')" id="btnBPayA" class="mode-btn border p-2 rounded text-center text-sm hover:bg-blue-100 focus:ring">乙方 賠 甲方</button>
+                <button type="button" onclick="setMode('NO_PAY')" id="btnNoPay" class="mode-btn border p-2 rounded text-center text-sm hover:bg-blue-100 focus:ring">互不賠償</button>
+            </div>
+            <input type="hidden" id="settleMode" value="">
+
+            <div id="moneySection" class="hidden">
+                <label class="block text-sm font-medium text-gray-700">賠償金額 (新台幣)</label>
+                <div class="flex items-center">
+                    <span class="text-lg mr-2">$</span>
+                    <input type="number" id="amount" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-yellow-50 p-2 border text-lg font-bold" placeholder="輸入金額">
+                </div>
+                <div class="mt-2 text-sm text-gray-500">
+                    <label><input type="checkbox" id="cashReceived" checked> 現場已以現金付清</label>
+                </div>
+            </div>
+
+            <div class="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                <strong>法律條款預覽：</strong><br>
+                1. 雙方同意和解，除上述條件外，放棄其餘民事請求權。<br>
+                2. 雙方不再追究對方刑事責任；如已告訴應即撤回。
+            </div>
+        </div>
+
+        <!-- 4. 簽名與照片 -->
+        <div class="space-y-4">
+            <h2 class="text-blue-600 font-bold text-xl border-b pb-2">4. 簽署與證據</h2>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">甲方簽名 (請在此框內簽名)</label>
+                <canvas id="sigA" class="canvas-box w-full h-32"></canvas>
+                <button type="button" onclick="clearPad(padA)" class="text-xs text-red-500 underline">清除重簽</button>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">乙方簽名 (請在此框內簽名)</label>
+                <canvas id="sigB" class="canvas-box w-full h-32"></canvas>
+                <button type="button" onclick="clearPad(padB)" class="text-xs text-red-500 underline">清除重簽</button>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">現場照片 (選填，將附於和解書後)</label>
+                <input type="file" id="evidencePhoto" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+            </div>
+        </div>
+
+        <button type="button" onclick="generateSettlement()" class="w-full bg-blue-600 text-white font-bold py-4 px-4 rounded-xl shadow-lg text-lg hover:bg-blue-700 active:scale-95 transition-transform">
+            產生和解書 PDF 並分享
+        </button>
+        <p class="text-xs text-center text-gray-400 mt-2">本工具僅供一般輕微車禍使用，重大事故或有體傷建議報警並諮詢律師。</p>
+    </form>
+
+    <!-- Hidden Area for PDF Rendering (Traditional Chinese Layout) -->
+    <div id="preview-area" class="bg-white p-8 text-black" style="width: 800px; margin: 0 auto;">
+        <h1 class="text-3xl font-bold text-center mb-6 border-b-2 border-black pb-4">交通事故和解書</h1>
+        
+        <div class="mb-6 text-lg leading-relaxed">
+            <p><strong>甲方：</strong><span id="prevNameA"></span> (身分證：<span id="prevIdA"></span>)</p>
+            <p><strong>乙方：</strong><span id="prevNameB"></span> (身分證：<span id="prevIdB"></span>)</p>
+        </div>
+
+        <div class="mb-6 text-lg leading-relaxed">
+            <p>茲因雙方於民國 <span id="prevYear"></span> 年 <span id="prevMonth"></span> 月 <span id="prevDay"></span> 日 <span id="prevTime"></span>，</p>
+            <p>在 <span id="prevLocation"></span> 發生 <span id="prevType"></span> 之交通事故。</p>
+            <p>雙方同意就此事故達成和解，條件如下：</p>
+        </div>
+
+        <div class="mb-6 border-2 border-gray-200 p-4 rounded">
+            <ol class="list-decimal list-inside space-y-2 text-lg font-bold">
+                <li id="prevTerms"></li>
+                <li>除上述約定外，雙方均拋棄對本案之其餘民事請求權。</li>
+                <li>雙方同意不再追究本案之刑事責任；如任一方已提出刑事告訴，應即具狀撤回。</li>
+            </ol>
+        </div>
+
+        <div class="flex justify-between mt-12 mb-8">
+            <div class="w-1/2 pr-4">
+                <p class="mb-2 font-bold">甲方簽章：</p>
+                <img id="prevSigA" class="h-24 border-b border-gray-400 object-contain" />
+                <p class="text-sm mt-1">車號：<span id="prevPlateA"></span> / 電話：<span id="prevPhoneA"></span></p>
+            </div>
+            <div class="w-1/2 pl-4">
+                <p class="mb-2 font-bold">乙方簽章：</p>
+                <img id="prevSigB" class="h-24 border-b border-gray-400 object-contain" />
+                <p class="text-sm mt-1">車號：<span id="prevPlateB"></span> / 電話：<span id="prevPhoneB"></span></p>
+            </div>
+        </div>
+
+        <div class="text-right text-sm mt-8">
+            <p>中華民國 <span id="signDate"></span> 立書</p>
+        </div>
+
+        <!-- Photo Append Area -->
+        <div id="prevPhotoArea" class="mt-8 hidden break-before-page">
+            <p class="font-bold border-b mb-2">附件：現場照片</p>
+            <img id="prevEvidenceImg" class="max-w-full max-h-96 object-contain" />
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Initialization
+    const { jsPDF } = window.jspdf;
+    
+    // Set current time
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('incidentTime').value = now.toISOString().slice(0, 16);
+
+    // Init Signature Pads
+    const canvasA = document.getElementById('sigA');
+    const canvasB = document.getElementById('sigB');
+    
+    // Adjust canvas resolution for retina screens
+    function resizeCanvas(canvas) {
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext("2d").scale(ratio, ratio);
+    }
+    window.onresize = () => { resizeCanvas(canvasA); resizeCanvas(canvasB); };
+    resizeCanvas(canvasA); resizeCanvas(canvasB);
+
+    const padA = new SignaturePad(canvasA);
+    const padB = new SignaturePad(canvasB);
+
+    function clearPad(pad) { pad.clear(); }
+
+    // 2. Logic Functions
+    function getLocation() {
+        if (navigator.geolocation) {
+            document.getElementById('loader').style.display = 'block';
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                // Simple Reverse Geocoding using OpenStreetMap (Free, no key needed)
+                try {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=zh-TW`);
+                    const data = await response.json();
+                    document.getElementById('incidentLocation').value = data.display_name || `${lat}, ${lng}`;
+                } catch (e) {
+                    document.getElementById('incidentLocation').value = `${lat}, ${lng}`;
+                }
+                document.getElementById('loader').style.display = 'none';
+            }, () => {
+                alert("無法取得位置，請手動輸入");
+                document.getElementById('loader').style.display = 'none';
+            });
+        } else {
+            alert("瀏覽器不支援定位");
+        }
+    }
+
+    function setMode(mode) {
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('bg-blue-600', 'text-white'));
+        document.getElementById('settleMode').value = mode;
+        document.getElementById('moneySection').classList.add('hidden');
+
+        if (mode === 'A_PAY_B') {
+            document.getElementById('btnAPayB').classList.add('bg-blue-600', 'text-white');
+            document.getElementById('moneySection').classList.remove('hidden');
+        } else if (mode === 'B_PAY_A') {
+            document.getElementById('btnBPayA').classList.add('bg-blue-600', 'text-white');
+            document.getElementById('moneySection').classList.remove('hidden');
+        } else {
+            document.getElementById('btnNoPay').classList.add('bg-blue-600', 'text-white');
+        }
+    }
+    // Default select
+    setMode('A_PAY_B');
+
+    // 3. PDF Generation
+    async function generateSettlement() {
+        // Basic Validation
+        if (padA.isEmpty() || padB.isEmpty()) {
+            alert("請雙方都完成簽名！");
+            return;
+        }
+        if (!document.getElementById('nameA').value || !document.getElementById('nameB').value) {
+            alert("請填寫雙方姓名");
+            return;
+        }
+
+        document.getElementById('loader').style.display = 'block';
+
+        // Fill Data to Preview Area
+        const time = new Date(document.getElementById('incidentTime').value);
+        document.getElementById('prevYear').innerText = time.getFullYear() - 1911; // ROC Year
+        document.getElementById('prevMonth').innerText = time.getMonth() + 1;
+        document.getElementById('prevDay').innerText = time.getDate();
+        document.getElementById('prevTime').innerText = time.getHours() + ':' + String(time.getMinutes()).padStart(2, '0');
+        
+        document.getElementById('prevLocation').innerText = document.getElementById('incidentLocation').value;
+        document.getElementById('prevType').innerText = document.getElementById('incidentType').value;
+
+        document.getElementById('prevNameA').innerText = document.getElementById('nameA').value;
+        document.getElementById('prevIdA').innerText = document.getElementById('idA').value;
+        document.getElementById('prevPlateA').innerText = document.getElementById('plateA').value;
+        document.getElementById('prevPhoneA').innerText = document.getElementById('phoneA').value;
+
+        document.getElementById('prevNameB').innerText = document.getElementById('nameB').value;
+        document.getElementById('prevIdB').innerText = document.getElementById('idB').value;
+        document.getElementById('prevPlateB').innerText = document.getElementById('plateB').value;
+        document.getElementById('prevPhoneB').innerText = document.getElementById('phoneB').value;
+
+        // Terms Logic
+        const mode = document.getElementById('settleMode').value;
+        const amt = document.getElementById('amount').value;
+        const isCash = document.getElementById('cashReceived').checked;
+        let termText = "";
+
+        if (mode === 'NO_PAY') {
+            termText = "雙方自行負擔各自車輛及人員之損失，互不要求賠償。";
+        } else {
+            const payer = mode === 'A_PAY_B' ? '甲方' : '乙方';
+            const receiver = mode === 'A_PAY_B' ? '乙方' : '甲方';
+            termText = `${payer}願賠償${receiver}新台幣 ${amt} 元整。`;
+            if (isCash) termText += " (該款項已於現場以現金付清，不另立收據)";
+            else termText += " (付款方式雙方另行議定)";
+        }
+        document.getElementById('prevTerms').innerText = termText;
+
+        // Signatures
+        document.getElementById('prevSigA').src = padA.toDataURL();
+        document.getElementById('prevSigB').src = padB.toDataURL();
+
+        // Today date for signing
+        const today = new Date();
+        document.getElementById('signDate').innerText = `${today.getFullYear()-1911} 年 ${today.getMonth()+1} 月 ${today.getDate()} 日`;
+
+        // Photo
+        const photoInput = document.getElementById('evidencePhoto');
+        if (photoInput.files && photoInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('prevEvidenceImg').src = e.target.result;
+                document.getElementById('prevPhotoArea').classList.remove('hidden');
+                renderAndShare();
+            }
+            reader.readAsDataURL(photoInput.files[0]);
+        } else {
+            document.getElementById('prevPhotoArea').classList.add('hidden');
+            renderAndShare();
+        }
+    }
+
+    async function renderAndShare() {
+        const element = document.getElementById('preview-area');
+        element.style.display = 'block'; // Show briefly for rendering
+
+        try {
+            // Convert HTML to Canvas
+            const canvas = await html2canvas(element, { scale: 2 });
+            element.style.display = 'none'; // Hide again
+
+            // Convert Canvas to PDF
+            const imgData = canvas.toDataURL('image/jpeg', 0.9);
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            
+            // Generate Blob
+            const pdfBlob = pdf.output('blob');
+            const file = new File([pdfBlob], "車禍和解書.pdf", { type: "application/pdf" });
+
+            // Share
+            if (navigator.share && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: '車禍和解書',
+                    text: '這是我們剛簽署的車禍和解書檔案。',
+                    files: [file]
+                });
+            } else {
+                // Fallback for PC or unsupported browsers
+                pdf.save("車禍和解書.pdf");
+                alert("已下載 PDF！(您的裝置不支援直接分享到 Line/Email，請手動傳送)");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("產生失敗，請重試。");
+        } finally {
+            document.getElementById('loader').style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>
