@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>車禍和解書產生器 (雙頁+騎縫章版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
+        
+        /* Modal & Loader */
+        .modal { display: none; position: fixed; z-index: 50; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); }
+        .modal-content { background-color: #fff; margin: 5% auto; width: 95%; height: 90%; border-radius: 8px; position: relative; display: flex; flex-direction: column; }
+        #signature-pad { flex: 1; background-color: #fff; touch-action: none; border: 1px solid #ccc; }
+        .loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 100; display: none; justify-content: center; align-items: center; flex-direction: column;}
+        .loader { border: 5px solid #f3f3f3; border-top: 5px solid #3b82f6; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Photo Grid */
+        .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; margin-top: 8px; }
+        .photo-item { position: relative; width: 100%; aspect-ratio: 1; border-radius: 6px; overflow: hidden; border: 1px solid #ddd; }
+        .photo-item img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-delete { position: absolute; top: 0; right: 0; background: red; color: white; font-size: 12px; padding: 2px 6px; cursor: pointer; z-index: 10; }
+
+        /* Hidden PDF Areas */
+        #preview-container { position: absolute; left: -9999px; top: 0; }
+        .pdf-page { width: 794px; min-height: 1123px; background: white; color: black; padding: 50px 60px; position: relative; box-sizing: border-box; }
+        
+        /* PDF Styling */
+        .pdf-title { font-size: 28px; font-weight: bold; text-align: center; border-bottom: 3px solid black; padding-bottom: 10px; margin-bottom: 20px; }
+        .pdf-section-title { font-size: 18px; font-weight: bold; border-bottom: 1px solid #999; margin-top: 25px; margin-bottom: 10px; padding-bottom: 5px; }
+        .pdf-text { font-size: 15px; line-height: 1.8; margin-bottom: 8px; }
+        .pdf-party-box { margin-bottom: 20px; }
+        .pdf-party-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 16px; }
+        .pdf-list { list-style-type: decimal; padding-left: 25px; font-size: 16px; line-height: 1.8; }
+        .pdf-list li { margin-bottom: 8px; }
+        
+        /* Riding Seal (Generated dynamically) */
+        .seal-mark { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 120px; overflow: hidden; z-index: 20; }
+    </style>
+</head>
+<body class="pb-24">
+
+<!-- Loader -->
+<div id="loader" class="loader-overlay">
+    <div class="loader"></div>
+    <p class="mt-4 text-blue-600 font-bold" id="loadingText">正在處理中...</p>
+</div>
+
+<!-- Signature Modal -->
+<div id="sigModal" class="modal">
+    <div class="modal-content">
+        <div class="p-3 bg-gray-100 border-b flex justify-between items-center">
+            <h3 class="font-bold text-lg">請在此簽名</h3>
+            <button onclick="closeSigModal()" class="text-gray-500 text-2xl px-2">&times;</button>
+        </div>
+        <canvas id="signature-pad"></canvas>
+        <div class="p-3 bg-gray-100 border-t flex justify-between gap-4">
+            <button onclick="clearCurrentPad()" class="px-4 py-2 text-red-600 border border-red-600 rounded">清除</button>
+            <button onclick="saveSignature()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded font-bold">確認簽名</button>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-md mx-auto bg-white min-h-screen shadow-lg">
+    <div class="bg-slate-800 text-white p-4 sticky top-0 z-10 shadow-md">
+        <h1 class="text-xl font-bold">車禍和解書 (雙頁版)</h1>
+    </div>
+
+    <form id="settlementForm" class="p-5 space-y-6">
+        
+        <!-- 1. 事故資訊 -->
+        <div class="space-y-3 border-l-4 border-blue-500 pl-3">
+            <h2 class="text-gray-800 font-bold text-lg">1. 事故資訊</h2>
+            <div class="grid grid-cols-2 gap-2">
+                <input type="date" id="incidentDate" class="border rounded p-2 bg-gray-50">
+                <input type="time" id="incidentTime" class="border rounded p-2 bg-gray-50">
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="incidentLocation" placeholder="地點" class="flex-1 border rounded p-2 bg-gray-50">
+                <button type="button" onclick="getLocation()" class="bg-green-600 text-white px-3 rounded shadow text-sm">📍</button>
+            </div>
+            
+            <select id="incidentType" onchange="toggleCustomType()" class="w-full border rounded p-2 bg-gray-50">
+                <option value="車輛擦撞">車輛擦撞</option>
+                <option value="追撞前方車輛">追撞前方車輛</option>
+                <option value="變換車道不當">變換車道不當</option>
+                <option value="倒車碰撞">倒車碰撞</option>
+                <option value="其他">其他 (自行描述)</option>
+            </select>
+            <input type="text" id="incidentTypeCustom" placeholder="描述事故 (例: 機車擦撞行人)" class="hidden w-full mt-2 border rounded p-2 bg-yellow-50">
+
+            <div class="flex items-start gap-2 bg-red-50 p-2 rounded border border-red-200">
+                <input type="checkbox" id="noInjuryCheck" class="mt-1 w-5 h-5">
+                <label for="noInjuryCheck" class="text-sm text-red-700 font-bold">
+                    確認雙方當下「均無受傷」<br><span class="text-xs font-normal text-gray-600">*勾選後將註記於和解書，避免體傷爭議。</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- 2. 當事人 -->
+        <div class="space-y-4 border-l-4 border-blue-500 pl-3">
+            <h2 class="text-gray-800 font-bold text-lg">2. 當事人資料</h2>
+            <div class="bg-blue-50 p-3 rounded border border-blue-100">
+                <h3 class="font-bold text-blue-800 text-sm mb-1">甲方 (Party A)</h3>
+                <input type="text" id="nameA" placeholder="姓名" class="w-full mb-2 p-2 border rounded text-sm">
+                <input type="text" id="idA" placeholder="身分證字號" onblur="validateID(this)" class="w-full mb-2 p-2 border rounded text-sm uppercase">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="plateA" placeholder="車號" class="border rounded p-2 text-sm">
+                    <input type="tel" id="phoneA" placeholder="電話" class="border rounded p-2 text-sm">
+                </div>
+            </div>
+            <div class="bg-gray-100 p-3 rounded border border-gray-200">
+                <h3 class="font-bold text-gray-800 text-sm mb-1">乙方 (Party B)</h3>
+                <input type="text" id="nameB" placeholder="姓名" class="w-full mb-2 p-2 border rounded text-sm">
+                <input type="text" id="idB" placeholder="身分證字號" onblur="validateID(this)" class="w-full mb-2 p-2 border rounded text-sm uppercase">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="plateB" placeholder="車號" class="border rounded p-2 text-sm">
+                    <input type="tel" id="phoneB" placeholder="電話" class="border rounded p-2 text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 和解條件 -->
+        <div class="space-y-4 border-l-4 border-blue-500 pl-3">
+            <h2 class="text-gray-800 font-bold text-lg">3. 和解條件</h2>
+            
+            <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="setMode('A_PAY_B')" id="btnAPayB" class="mode-btn border p-2 rounded text-sm">甲方 賠 乙方</button>
+                <button type="button" onclick="setMode('B_PAY_A')" id="btnBPayA" class="mode-btn border p-2 rounded text-sm">乙方 賠 甲方</button>
+                <button type="button" onclick="setMode('NO_PAY')" id="btnNoPay" class="mode-btn border p-2 rounded text-sm">互不賠償</button>
+                <div class="relative group">
+                     <button type="button" class="w-full border p-2 rounded text-sm bg-gray-50 text-gray-600">自訂條件 ▼</button>
+                     <div class="absolute hidden group-hover:block hover:block z-10 w-full bg-white shadow-xl border rounded mt-1">
+                        <button type="button" onclick="setMode('CUSTOM_A_TO_B')" id="btnCustAB" class="mode-btn block w-full text-left p-2 hover:bg-blue-50 text-sm">自訂 (甲給付乙)</button>
+                        <button type="button" onclick="setMode('CUSTOM_B_TO_A')" id="btnCustBA" class="mode-btn block w-full text-left p-2 hover:bg-blue-50 text-sm">自訂 (乙給付甲)</button>
+                     </div>
+                </div>
+            </div>
+            <input type="hidden" id="settleMode" value="A_PAY_B">
+            <div id="currentModeText" class="text-xs text-blue-600 font-bold text-right">目前選擇：甲方賠償乙方</div>
+
+            <!-- Money Input -->
+            <div id="moneySection" class="bg-yellow-50 p-3 rounded border border-yellow-200">
+                <label class="block text-sm font-medium text-gray-700">賠償金額 (NT$)</label>
+                <input type="number" id="amount" class="mt-1 block w-full p-2 border text-xl font-bold rounded" placeholder="輸入金額">
+                <label class="mt-2 flex items-center text-sm">
+                    <input type="checkbox" id="cashReceived" checked class="mr-2"> 現場現金付清 (不另立收據)
+                </label>
+            </div>
+
+            <!-- Custom Input -->
+            <div id="customSection" class="hidden bg-green-50 p-3 rounded border border-green-200">
+                <label class="block text-sm font-medium text-gray-700" id="customLabel">自訂和解內容</label>
+                <textarea id="customText" rows="3" class="w-full mt-1 p-2 border rounded text-sm" placeholder="例：甲方負責修復乙方車輛..."></textarea>
+                
+                <div class="mt-2">
+                     <button type="button" onclick="document.getElementById('customPhotoInput').click()" class="text-xs bg-white border px-2 py-1 rounded shadow-sm">📷 附圖 (維修單/估價單)</button>
+                     <input type="file" id="customPhotoInput" accept="image/*" class="hidden" onchange="handleCustomPhoto(this)">
+                     <div id="customPhotoPreview" class="mt-1 w-24 hidden relative">
+                        <img id="customImg" class="w-full rounded border">
+                        <button type="button" onclick="removeCustomPhoto()" class="absolute top-0 right-0 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">×</button>
+                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 簽名與照片 -->
+        <div class="space-y-4 border-l-4 border-blue-500 pl-3">
+            <h2 class="text-gray-800 font-bold text-lg">4. 簽署與證據</h2>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <div id="previewSigA" onclick="openSigModal('A')" class="h-20 border-2 border-dashed border-gray-400 rounded bg-gray-50 flex items-center justify-center cursor-pointer">
+                        <span class="text-gray-400 text-sm">甲方簽名 (點擊)</span>
+                    </div>
+                    <input type="hidden" id="sigDataA">
+                </div>
+                <div>
+                    <div id="previewSigB" onclick="openSigModal('B')" class="h-20 border-2 border-dashed border-gray-400 rounded bg-gray-50 flex items-center justify-center cursor-pointer">
+                        <span class="text-gray-400 text-sm">乙方簽名 (點擊)</span>
+                    </div>
+                    <input type="hidden" id="sigDataB">
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-end mb-2">
+                    <label class="block text-sm font-bold">車損/現場照片 (將附於第二頁)</label>
+                    <button type="button" onclick="document.getElementById('multiPhotoInput').click()" class="bg-blue-100 text-blue-700 px-3 py-1 rounded text-sm font-bold">📷 新增</button>
+                </div>
+                <input type="file" id="multiPhotoInput" accept="image/*" multiple class="hidden" onchange="handleMultiPhotos(this)">
+                <div id="evidenceGrid" class="photo-grid"></div>
+            </div>
+        </div>
+
+        <button type="button" onclick="generatePDF()" class="w-full bg-gradient-to-r from-slate-700 to-slate-900 text-white font-bold py-4 rounded-xl shadow-lg text-lg mt-6">
+            產生 PDF (含騎縫章)
+        </button>
+    </form>
+</div>
+
+<!-- PREVIEW AREA (HIDDEN) -->
+<div id="preview-container">
+    
+    <!-- PAGE 1: CONTRACT -->
+    <div id="preview-page1" class="pdf-page">
+        <div class="pdf-title">交通事故和解書</div>
+        <div class="text-right mb-4 text-sm">日期：<span id="pdfDate"></span></div>
+
+        <!-- 1. Parties (Compact V1 Style) -->
+        <div class="pdf-party-box">
+            <div class="pdf-party-row">
+                <span><strong>甲方：</strong><span id="pdfNameA"></span></span>
+                <span>身分證：<span id="pdfIdA"></span></span>
+            </div>
+            <div class="pdf-party-row">
+                <span><strong>乙方：</strong><span id="pdfNameB"></span></span>
+                <span>身分證：<span id="pdfIdB"></span></span>
+            </div>
+        </div>
+
+        <!-- 2. Incident -->
+        <div class="pdf-section-title">一、事由</div>
+        <p class="pdf-text">
+            茲因雙方於 <span id="pdfIncidentTime"></span>，在 <span id="pdfLocation"></span> 
+            發生 <span id="pdfType"></span> 之交通事故。
+            <span id="pdfInjuryText" class="font-bold text-red-600"></span>
+        </p>
+
+        <!-- 3. Terms -->
+        <div class="pdf-section-title">二、和解條件</div>
+        <ol class="pdf-list">
+            <li id="pdfMainTerm" class="font-bold"></li>
+            <li id="pdfSubTerm" style="display:none"></li> <!-- Hidden if empty -->
+            <li>除上述約定外，雙方均拋棄對本案之其餘民事請求權，並不再追究對方之刑事責任。</li>
+            <li>如任一方已提出刑事告訴，應即具狀撤回。</li>
+        </ol>
+        
+        <!-- Custom Condition Image -->
+        <div id="pdfCustomPhotoContainer" class="mt-4 hidden">
+            <p class="text-xs text-gray-500 mb-1">[自訂條件附件]</p>
+            <img id="pdfCustomImg" class="h-32 border object-contain">
+        </div>
+
+        <!-- 4. Signatures (Space Saving Layout) -->
+        <div class="flex justify-between mt-12">
+            <div class="w-5/12 text-center">
+                <p class="font-bold mb-2 text-lg">甲方簽章</p>
+                <img id="pdfSigA" class="h-24 mx-auto border-b border-gray-400 mb-1 object-contain w-full">
+                <div class="text-sm text-gray-600 text-left pl-2">
+                    車號：<span id="pdfPlateA"></span><br>
+                    電話：<span id="pdfPhoneA"></span>
+                </div>
+            </div>
+            <div class="w-5/12 text-center">
+                <p class="font-bold mb-2 text-lg">乙方簽章</p>
+                <img id="pdfSigB" class="h-24 mx-auto border-b border-gray-400 mb-1 object-contain w-full">
+                <div class="text-sm text-gray-600 text-left pl-2">
+                    車號：<span id="pdfPlateB"></span><br>
+                    電話：<span id="pdfPhoneB"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-8 text-center text-sm text-gray-400">
+            (本頁為合約內容，附件請見次頁)
+        </div>
+    </div>
+
+    <!-- PAGE 2: EVIDENCE (Only if photos exist) -->
+    <div id="preview-page2" class="pdf-page hidden">
+        <div class="pdf-title" style="font-size: 20px; border:none; margin-bottom: 10px;">附件：現場及車損憑證</div>
+        <div class="text-right text-sm text-gray-500 mb-4">案件日期：<span id="pdfDate2"></span></div>
+        
+        <div id="pdfPhotoGrid" class="grid grid-cols-2 gap-4">
+            <!-- Photos injected here -->
+        </div>
+    </div>
+</div>
+
+<!-- Seal Canvas Generator (Invisible) -->
+<canvas id="sealCanvas" width="100" height="300" style="display:none;"></canvas>
+
+<script>
+    // --- Init ---
+    const { jsPDF } = window.jspdf;
+    let signaturePad = null, currentSigner = null, evidencePhotos = [];
+    
+    const now = new Date();
+    document.getElementById('incidentDate').value = now.toISOString().slice(0, 10);
+    document.getElementById('incidentTime').value = now.toTimeString().slice(0, 5);
+
+    function initPad() {
+        const canvas = document.getElementById('signature-pad');
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext("2d").scale(ratio, ratio);
+        signaturePad = new SignaturePad(canvas, { minWidth: 1, maxWidth: 3 });
+    }
+
+    // --- Logic ---
+    function toggleCustomType() {
+        const isOther = document.getElementById('incidentType').value === '其他';
+        document.getElementById('incidentTypeCustom').classList.toggle('hidden', !isOther);
+    }
+
+    function setMode(mode) {
+        document.querySelectorAll('.mode-btn').forEach(b => {
+            b.classList.remove('bg-blue-600', 'text-white', 'ring-2'); 
+        });
+        
+        let btnId = 'btnNoPay';
+        let label = "互不賠償";
+        
+        if(mode === 'A_PAY_B') { btnId = 'btnAPayB'; label = "甲方賠償乙方"; }
+        else if(mode === 'B_PAY_A') { btnId = 'btnBPayA'; label = "乙方賠償甲方"; }
+        else if(mode === 'CUSTOM_A_TO_B') { btnId = 'btnCustAB'; label = "自訂 (甲給付乙)"; }
+        else if(mode === 'CUSTOM_B_TO_A') { btnId = 'btnCustBA'; label = "自訂 (乙給付甲)"; }
+
+        const btn = document.getElementById(btnId);
+        if(btn) btn.classList.add('bg-blue-600', 'text-white', 'ring-2');
+        
+        document.getElementById('settleMode').value = mode;
+        document.getElementById('currentModeText').innerText = "目前選擇：" + label;
+
+        // Toggle Sections
+        const isMoney = (mode === 'A_PAY_B' || mode === 'B_PAY_A');
+        const isCustom = mode.startsWith('CUSTOM');
+
+        document.getElementById('moneySection').classList.toggle('hidden', !isMoney);
+        document.getElementById('customSection').classList.toggle('hidden', !isCustom);
+
+        if(isCustom) {
+            const lbl = (mode === 'CUSTOM_A_TO_B') ? "甲方同意給付/執行之內容" : "乙方同意給付/執行之內容";
+            document.getElementById('customLabel').innerText = lbl;
+        }
+    }
+
+    function getLocation() {
+        const el = document.getElementById('incidentLocation');
+        if (!navigator.geolocation) { alert("不支援定位"); return; }
+        el.placeholder = "定位中...";
+        navigator.geolocation.getCurrentPosition(async (p) => {
+            try {
+                const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${p.coords.latitude}&lon=${p.coords.longitude}&accept-language=zh-TW`);
+                const d = await r.json();
+                el.value = d.display_name || `${p.coords.latitude}, ${p.coords.longitude}`;
+            } catch { el.value = `${p.coords.latitude}, ${p.coords.longitude}`; }
+        }, () => { alert("定位失敗"); el.placeholder = "請手動輸入"; });
+    }
+
+    // --- Signature ---
+    function openSigModal(s) {
+        currentSigner = s;
+        document.getElementById('sigModal').style.display = 'block';
+        setTimeout(initPad, 100); // Wait for render
+    }
+    function closeSigModal() { document.getElementById('sigModal').style.display = 'none'; }
+    function clearCurrentPad() { if(signaturePad) signaturePad.clear(); }
+    function saveSignature() {
+        if(signaturePad.isEmpty()) return alert("請簽名");
+        const data = signaturePad.toDataURL();
+        document.getElementById(`sigData${currentSigner}`).value = data;
+        document.getElementById(`previewSig${currentSigner}`).innerHTML = `<img src="${data}" class="h-full object-contain">`;
+        document.getElementById(`previewSig${currentSigner}`).classList.replace('border-dashed', 'border-solid');
+        closeSigModal();
+    }
+
+    // --- Photos ---
+    function handleCustomPhoto(input) {
+        if (input.files[0]) {
+            const r = new FileReader();
+            r.onload = e => {
+                document.getElementById('customImg').src = e.target.result;
+                document.getElementById('customPhotoPreview').classList.remove('hidden');
+            };
+            r.readAsDataURL(input.files[0]);
+        }
+    }
+    function removeCustomPhoto() {
+        document.getElementById('customPhotoInput').value = '';
+        document.getElementById('customPhotoPreview').classList.add('hidden');
+    }
+    function handleMultiPhotos(input) {
+        if (!input.files) return;
+        Array.from(input.files).forEach(f => {
+            const r = new FileReader();
+            r.onload = e => {
+                evidencePhotos.push(e.target.result);
+                renderGrid();
+            };
+            r.readAsDataURL(f);
+        });
+        input.value = '';
+    }
+    function renderGrid() {
+        const g = document.getElementById('evidenceGrid');
+        g.innerHTML = '';
+        evidencePhotos.forEach((src, i) => {
+            const d = document.createElement('div');
+            d.className = 'photo-item';
+            d.innerHTML = `<img src="${src}"><div class="photo-delete" onclick="delPhoto(${i})">×</div>`;
+            g.appendChild(d);
+        });
+    }
+    function delPhoto(i) { evidencePhotos.splice(i, 1); renderGrid(); }
+
+    // --- ID Validation ---
+    function validateID(el) {
+        const id = el.value.toUpperCase();
+        el.value = id;
+        const tab = "ABCDEFGHJKLMNPQRSTUVXYWZIO";
+        const A1 = [1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3];
+        const A2 = [0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5];
+        const Mx = [9,8,7,6,5,4,3,2,1,1];
+        if (id.length !== 10) return err(el);
+        const i = tab.indexOf(id.charAt(0));
+        if (i === -1) return err(el);
+        let sum = A1[i] + A2[i] * 9;
+        for (let j = 1; j < 10; j++) {
+            const v = parseInt(id.charAt(j));
+            if (isNaN(v)) return err(el);
+            sum += v * Mx[j];
+        }
+        if (sum % 10 !== 0) return err(el);
+        el.classList.remove('border-red-500');
+        el.classList.add('border-green-500');
+    }
+    function err(el) { el.classList.add('border-red-500'); alert("身分證格式錯誤"); }
+
+    // --- PDF & Riding Seal ---
+    function generateSeal() {
+        const c = document.getElementById('sealCanvas');
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, 100, 300);
+        
+        // Oval Shape
+        ctx.beginPath();
+        ctx.ellipse(50, 150, 40, 100, 0, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.1)'; // BG
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'red';
+        ctx.stroke();
+
+        // Text
+        ctx.save();
+        ctx.translate(50, 150);
+        ctx.rotate(-Math.PI / 2); // Vertical text
+        ctx.font = "bold 24px 'Noto Sans TC', sans-serif";
+        ctx.fillStyle = "red";
+        ctx.textAlign = "center";
+        ctx.fillText("雙方和解．騎縫章", 0, 8);
+        ctx.restore();
+
+        return c.toDataURL();
+    }
+
+    async function generatePDF() {
+        const nA = document.getElementById('nameA').value;
+        const nB = document.getElementById('nameB').value;
+        if(!nA || !nB || !document.getElementById('sigDataA').value) return alert("請填寫姓名並完成簽名");
+
+        document.getElementById('loader').style.display = 'flex';
+        
+        // 1. Fill Data Page 1
+        const dVal = document.getElementById('incidentDate').value;
+        document.getElementById('pdfDate').innerText = dVal;
+        document.getElementById('pdfDate2').innerText = dVal;
+        document.getElementById('pdfIncidentTime').innerText = `${dVal} ${document.getElementById('incidentTime').value}`;
+        document.getElementById('pdfLocation').innerText = document.getElementById('incidentLocation').value;
+        
+        const typeVal = document.getElementById('incidentType').value;
+        document.getElementById('pdfType').innerText = (typeVal === '其他') ? document.getElementById('incidentTypeCustom').value : typeVal;
+        document.getElementById('pdfInjuryText').innerText = document.getElementById('noInjuryCheck').checked ? " (※ 雙方確認當下均無受傷)" : "";
+
+        ['Name','Id','Plate','Phone'].forEach(f => {
+            document.getElementById(`pdf${f}A`).innerText = document.getElementById(f.toLowerCase()+'A').value;
+            document.getElementById(`pdf${f}B`).innerText = document.getElementById(f.toLowerCase()+'B').value;
+        });
+
+        // Terms
+        const mode = document.getElementById('settleMode').value;
+        const amt = document.getElementById('amount').value;
+        let mTerm = "", sTerm = "";
+        const isCash = document.getElementById('cashReceived').checked;
+
+        if(mode === 'NO_PAY') mTerm = "雙方自行負擔各自損失，互不要求賠償。";
+        else if(mode.startsWith('CUSTOM')) {
+            const who = mode.includes('A_TO_B') ? '甲方' : '乙方';
+            const toWho = mode.includes('A_TO_B') ? '乙方' : '甲方';
+            mTerm = `${who}同意：${document.getElementById('customText').value}`;
+            // Custom Photo
+            const cSrc = document.getElementById('customImg').src;
+            const cDiv = document.getElementById('pdfCustomPhotoContainer');
+            if(cSrc && !document.getElementById('customPhotoPreview').classList.contains('hidden')) {
+                document.getElementById('pdfCustomImg').src = cSrc;
+                cDiv.classList.remove('hidden');
+            } else cDiv.classList.add('hidden');
+        } else {
+            const who = (mode === 'A_PAY_B') ? '甲方' : '乙方';
+            const toWho = (mode === 'A_PAY_B') ? '乙方' : '甲方';
+            mTerm = `${who}願賠償${toWho}新台幣 ${amt} 元整。`;
+            sTerm = isCash ? "上開金額已於現場以現金付清，不另立收據。" : "付款方式雙方另行約定。";
+        }
+
+        document.getElementById('pdfMainTerm').innerText = mTerm;
+        const subLi = document.getElementById('pdfSubTerm');
+        if(sTerm) { subLi.innerText = sTerm; subLi.style.display = 'list-item'; }
+        else subLi.style.display = 'none';
+
+        document.getElementById('pdfSigA').src = document.getElementById('sigDataA').value;
+        document.getElementById('pdfSigB').src = document.getElementById('sigDataB').value;
+
+        // 2. Fill Page 2 (Photos)
+        const p2 = document.getElementById('preview-page2');
+        const grid = document.getElementById('pdfPhotoGrid');
+        grid.innerHTML = '';
+        const hasPhotos = evidencePhotos.length > 0;
+        
+        if(hasPhotos) {
+            p2.classList.remove('hidden');
+            evidencePhotos.forEach(src => {
+                const img = document.createElement('img');
+                img.src = src;
+                img.className = "w-full h-64 object-cover border border-gray-300";
+                grid.appendChild(img);
+            });
+        } else {
+            p2.classList.add('hidden');
+        }
+
+        // 3. Generate
+        try {
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const w = pdf.internal.pageSize.getWidth(); // 210mm
+            const h = pdf.internal.pageSize.getHeight(); // 297mm
+            
+            // Render P1
+            const p1C = await html2canvas(document.getElementById('preview-page1'), { scale: 2 });
+            pdf.addImage(p1C.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, w, h);
+
+            if(hasPhotos) {
+                // Prepare Seal
+                const sealData = generateSeal();
+                
+                // Draw Seal on P1 (Right Edge)
+                // PDF coords: (x, y, w, h). Page width is 210.
+                // Draw right half of seal at x=200? No, simpler:
+                // Draw full seal centered on the edge.
+                // Edge is 210. Center of seal at 210.
+                pdf.addImage(sealData, 'PNG', 200, 140, 20, 60); // Half visible
+
+                pdf.addPage();
+                
+                // Render P2
+                const p2C = await html2canvas(document.getElementById('preview-page2'), { scale: 2 });
+                pdf.addImage(p2C.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, w, h);
+
+                // Draw Seal on P2 (Left Edge)
+                // Center of seal at 0.
+                pdf.addImage(sealData, 'PNG', -10, 140, 20, 60); // Other half visible
+            }
+
+            const blob = pdf.output('blob');
+            const file = new File([blob], "車禍和解書.pdf", { type: "application/pdf" });
+
+            if (navigator.share && navigator.canShare({ files: [file] })) {
+                await navigator.share({ files: [file], title: '車禍和解書' });
+            } else {
+                pdf.save("車禍和解書.pdf");
+                alert("已下載 PDF");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("錯誤: " + e.message);
+        } finally {
+            document.getElementById('loader').style.display = 'none';
+        }
+    }
+</script>
+</body>
+</html>
