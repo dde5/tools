@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業版車禍和解書產生器 (律師監修版)</title>
+    <title>專業版車禍和解書產生器 (跨平台修正版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -11,6 +11,15 @@
     
     <style>
         body { font-family: system-ui, -apple-system, "Microsoft JhengHei", "Helvetica Neue", Arial, sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
+        
+        /* === iOS Date Input Fix (關鍵修正) === */
+        input[type="date"], input[type="time"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background-color: #fff;
+            min-height: 42px; /* 強制高度避免 iOS 塌陷 */
+            line-height: 1.5;
+        }
         
         /* Modal & Loader */
         .modal { display: none; position: fixed; z-index: 50; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); backdrop-filter: blur(2px); }
@@ -122,7 +131,7 @@
     <div class="bg-gradient-to-r from-slate-800 to-slate-900 text-white p-5 sticky top-0 z-20 shadow-md flex items-center justify-between">
         <div>
             <h1 class="text-xl font-bold">車禍和解書產生器</h1>
-            <p class="text-xs text-slate-400">專業律師監修版 v2.3</p>
+            <p class="text-xs text-slate-400">專業律師監修版 v2.4 (Android/iOS修正)</p>
         </div>
         <div class="text-xs bg-red-700 px-2 py-1 rounded text-white border border-red-500 shadow">★ 雙頁騎縫章</div>
     </div>
@@ -139,16 +148,16 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="text-xs text-gray-500">日期</label>
-                    <input type="date" id="incidentDate" class="w-full border border-gray-300 rounded-lg p-2.5 bg-gray-50">
+                    <input type="date" id="incidentDate" class="w-full border border-gray-300 rounded-lg p-2.5 bg-white">
                 </div>
                 <div>
                     <label class="text-xs text-gray-500">時間</label>
-                    <input type="time" id="incidentTime" class="w-full border border-gray-300 rounded-lg p-2.5 bg-gray-50">
+                    <input type="time" id="incidentTime" class="w-full border border-gray-300 rounded-lg p-2.5 bg-white">
                 </div>
             </div>
             
             <div class="relative">
-                <input type="text" id="incidentLocation" placeholder="輸入事故地點" class="w-full border border-gray-300 rounded-lg p-2.5 pr-12 bg-gray-50">
+                <input type="text" id="incidentLocation" placeholder="輸入事故地點" class="w-full border border-gray-300 rounded-lg p-2.5 pr-12 bg-white">
                 <button type="button" onclick="getLocation()" class="absolute right-1 top-1 bottom-1 w-10 bg-green-100 text-green-600 rounded-md flex items-center justify-center hover:bg-green-200">
                     📍
                 </button>
@@ -202,7 +211,7 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="text-xs text-blue-600 font-bold ml-1">出生年月日 <span class="text-red-500">*</span></label>
-                        <input type="date" id="dobA" onchange="checkAge('A')" class="w-full border border-blue-200 rounded p-2 text-sm">
+                        <input type="date" id="dobA" onchange="checkAge('A')" class="w-full border border-blue-200 rounded p-2 text-sm bg-white">
                     </div>
                     <div>
                          <label class="text-xs text-blue-600 font-bold ml-1">聯絡電話</label>
@@ -210,7 +219,6 @@
                     </div>
                 </div>
 
-                <!-- 車主確認 -->
                 <div class="flex items-center gap-2 pt-1">
                     <input type="checkbox" id="isOwnerA" checked class="w-4 h-4 text-blue-600">
                     <label for="isOwnerA" class="text-sm text-blue-900">駕駛人即為車主</label>
@@ -219,7 +227,6 @@
                     <input type="text" id="plateA" placeholder="車牌號碼" class="w-full border border-blue-200 rounded p-2 text-sm bg-white">
                 </div>
 
-                <!-- 法定代理人 A (Hidden by default) -->
                 <div id="repAreaA" class="hidden bg-white p-3 rounded border border-red-200 mt-2">
                     <p class="text-xs text-red-600 font-bold mb-2">⚠️ 甲方未滿 18 歲，需法定代理人</p>
                     <input type="text" id="repNameA" placeholder="法定代理人姓名" class="w-full border rounded p-2 text-sm mb-2">
@@ -255,7 +262,7 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="text-xs text-orange-800 font-bold ml-1">出生年月日 <span class="text-red-500">*</span></label>
-                        <input type="date" id="dobB" onchange="checkAge('B')" class="w-full border border-orange-200 rounded p-2 text-sm">
+                        <input type="date" id="dobB" onchange="checkAge('B')" class="w-full border border-orange-200 rounded p-2 text-sm bg-white">
                     </div>
                     <div>
                          <label class="text-xs text-orange-800 font-bold ml-1">聯絡電話</label>
@@ -263,7 +270,6 @@
                     </div>
                 </div>
 
-                <!-- 車主確認 -->
                 <div class="flex items-center gap-2 pt-1">
                     <input type="checkbox" id="isOwnerB" checked class="w-4 h-4 text-orange-600">
                     <label for="isOwnerB" class="text-sm text-orange-900">駕駛人即為車主</label>
@@ -272,7 +278,6 @@
                     <input type="text" id="plateB" placeholder="車牌號碼" class="w-full border border-orange-200 rounded p-2 text-sm bg-white">
                 </div>
 
-                <!-- 法定代理人 B (Hidden) -->
                 <div id="repAreaB" class="hidden bg-white p-3 rounded border border-red-200 mt-2">
                     <p class="text-xs text-red-600 font-bold mb-2">⚠️ 乙方未滿 18 歲，需法定代理人</p>
                     <input type="text" id="repNameB" placeholder="法定代理人姓名" class="w-full border rounded p-2 text-sm mb-2">
@@ -298,18 +303,14 @@
             </div>
             <input type="hidden" id="settleMode" value="A_PAY_B">
 
-            <!-- Money Input -->
             <div id="moneySection" class="bg-yellow-50 p-4 rounded-xl border border-yellow-200 space-y-4">
                 <div>
                     <label class="text-xs text-gray-500 font-bold">賠償金額 (新台幣)</label>
                     <input type="number" id="amount" class="block w-full p-2 border border-gray-300 text-2xl font-bold rounded bg-white text-right" placeholder="0">
                 </div>
                 
-                <!-- Insurance Selection -->
                 <div>
                     <label class="text-xs text-gray-700 font-bold mb-1 block">保險理賠處理方式 <span class="text-red-500">*</span></label>
-                    
-                    <!-- Option 1: Exclude Insurance -->
                     <label class="radio-box" id="boxInsExclude" onclick="selectInsurance('exclude')">
                         <input type="radio" name="insuranceOption" value="exclude" checked>
                         <div>
@@ -317,8 +318,6 @@
                             <div class="text-xs text-gray-500 leading-tight">本和解金僅針對「自付額」部分。雙方仍可各自向對方保險公司申請理賠，保險公司可代位求償。</div>
                         </div>
                     </label>
-
-                    <!-- Option 2: Include Insurance -->
                     <label class="radio-box" id="boxInsInclude" onclick="selectInsurance('include')">
                         <input type="radio" name="insuranceOption" value="include">
                         <div>
@@ -339,7 +338,6 @@
                         <input type="radio" name="payMethod" value="transfer" onclick="toggleBankInfo(true)" class="mr-2"> 
                         現場轉帳/匯款
                     </label>
-                    
                     <div id="bankInfo" class="hidden pl-6 pt-1">
                         <input type="text" id="bankAccount" placeholder="輸入收款帳號末五碼 (供核對用)" class="w-full border rounded p-2 text-sm bg-white">
                     </div>
@@ -354,9 +352,7 @@
                 <h2 class="text-gray-900 font-bold text-lg">簽署與證據</h2>
             </div>
 
-            <!-- Signature Grid -->
             <div class="grid grid-cols-2 gap-4">
-                <!-- Party A -->
                 <div class="space-y-2">
                     <p class="text-sm font-bold text-blue-800 text-center">甲方簽署</p>
                     <div id="previewSigA" onclick="openSigModal('A')" class="h-24 border-2 border-dashed border-blue-300 rounded-lg bg-blue-50 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-100 transition">
@@ -365,7 +361,6 @@
                     </div>
                     <input type="hidden" id="sigDataA">
 
-                    <!-- Rep A Sig -->
                     <div id="repSigBoxA" class="hidden">
                          <div id="previewSigRepA" onclick="openSigModal('RepA')" class="h-20 border-2 border-dashed border-red-300 rounded-lg bg-red-50 flex flex-col items-center justify-center cursor-pointer mt-2">
                             <span class="text-red-400 text-xs">法定代理人簽名</span>
@@ -374,7 +369,6 @@
                     </div>
                 </div>
 
-                <!-- Party B -->
                 <div class="space-y-2">
                     <p class="text-sm font-bold text-orange-800 text-center">乙方簽署</p>
                     <div id="previewSigB" onclick="openSigModal('B')" class="h-24 border-2 border-dashed border-orange-300 rounded-lg bg-orange-50 flex flex-col items-center justify-center cursor-pointer hover:bg-orange-100 transition">
@@ -383,7 +377,6 @@
                     </div>
                     <input type="hidden" id="sigDataB">
 
-                    <!-- Rep B Sig -->
                     <div id="repSigBoxB" class="hidden">
                          <div id="previewSigRepB" onclick="openSigModal('RepB')" class="h-20 border-2 border-dashed border-red-300 rounded-lg bg-red-50 flex flex-col items-center justify-center cursor-pointer mt-2">
                             <span class="text-red-400 text-xs">法定代理人簽名</span>
@@ -423,17 +416,13 @@
 
 <!-- ================= PDF TEMPLATES (HIDDEN) ================= -->
 <div id="preview-container">
-    
-    <!-- PAGE 1: CONTRACT -->
     <div id="preview-page1" class="pdf-page">
         <div class="pdf-title">交通事故和解書</div>
-        
         <div class="flex justify-between items-end mb-4 border-b pb-2">
             <div class="text-sm text-gray-600">案件編號：<span id="pdfRefId"></span></div>
             <div class="text-sm font-bold">日期：<span id="pdfDate"></span></div>
         </div>
 
-        <!-- 1. Parties -->
         <div class="pdf-party-box">
             <div class="pdf-party-col border-r mr-4 pr-4">
                 <strong>甲方 (Party A)</strong>
@@ -455,7 +444,6 @@
             </div>
         </div>
 
-        <!-- 2. Incident -->
         <div class="pdf-section-title">一、事故案由</div>
         <p class="pdf-text">
             茲因雙方於中華民國 <span id="pdfIncidentDateStr"></span> <span id="pdfIncidentTime"></span>，
@@ -463,23 +451,17 @@
             <span id="pdfInjuryText" class="pdf-highlight"></span>
         </p>
 
-        <!-- 3. Terms -->
         <div class="pdf-section-title">二、和解條件</div>
         <ol class="pdf-list">
             <li id="pdfMainTerm" class="font-bold mb-2"></li>
             <li id="pdfPayDetail"></li>
-            
-            <!-- Legal Protection Clauses -->
             <li>
                 本案為一次性解決。除本和解書約定之賠償金額外，雙方均拋棄對本案其餘一切民事請求權（包括但不限於車輛貶值損失、營業損失、交通代步費、精神慰撫金等）。
             </li>
             <li>
                 雙方同意不再追究對方之刑事責任（含過失傷害等）。如任一方已提出刑事告訴，應即具狀撤回。
             </li>
-            <!-- Insurance Clause (Dynamic) -->
             <li id="pdfInsuranceClause"></li>
-
-            <!-- Dynamic Owner Clauses -->
             <li id="pdfOwnerClauseA" class="hidden">
                 甲方聲明：駕駛人雖非車主，但已獲車輛所有人充分授權全權處理本案及收受和解金，若有爭議概由駕駛人負完全責任。
             </li>
@@ -488,29 +470,21 @@
             </li>
         </ol>
 
-        <!-- 4. Signatures -->
         <div class="pdf-sig-container">
-            <!-- Party A Box -->
             <div class="pdf-sig-box">
                 <p class="font-bold mb-2 text-center bg-gray-100 p-1">甲方簽章</p>
                 <img id="pdfSigA" class="pdf-sig-img">
                 <div class="text-xs text-gray-500">簽署人：<span id="pdfSigNameA"></span></div>
-                
-                <!-- Rep A -->
                 <div id="pdfRepSigContainerA" class="hidden mt-2">
                     <p class="text-xs font-bold text-gray-600">法定代理人</p>
                     <img id="pdfSigRepA" class="pdf-sig-img h-10">
                     <div class="text-xs text-gray-500"><span id="pdfRepSigNameA"></span></div>
                 </div>
             </div>
-
-            <!-- Party B Box -->
             <div class="pdf-sig-box">
                 <p class="font-bold mb-2 text-center bg-gray-100 p-1">乙方簽章</p>
                 <img id="pdfSigB" class="pdf-sig-img">
                 <div class="text-xs text-gray-500">簽署人：<span id="pdfSigNameB"></span></div>
-
-                <!-- Rep B -->
                 <div id="pdfRepSigContainerB" class="hidden mt-2">
                     <p class="text-xs font-bold text-gray-600">法定代理人</p>
                     <img id="pdfSigRepB" class="pdf-sig-img h-10">
@@ -520,29 +494,23 @@
         </div>
 
         <div class="footer-note">
-            Digital Document Generated via SettlementHelper v2.3 | <span id="pdfTimestamp"></span> | <span id="pdfUserAgent"></span>
+            Digital Document Generated via SettlementHelper v2.4 | <span id="pdfTimestamp"></span> | <span id="pdfUserAgent"></span>
         </div>
     </div>
 
-    <!-- PAGE 2: EVIDENCE -->
     <div id="preview-page2" class="pdf-page hidden">
         <div class="pdf-title" style="font-size: 20px; border:none; margin-bottom: 10px;">附件：現場及車損紀錄</div>
         <div class="text-right text-sm text-gray-500 mb-4">案件編號：<span id="pdfRefId2"></span></div>
-        
-        <div id="pdfPhotoGrid" class="grid grid-cols-2 gap-6">
-            <!-- Photos injected here -->
-        </div>
+        <div id="pdfPhotoGrid" class="grid grid-cols-2 gap-6"></div>
         <div class="footer-note">
             此頁面為和解書之附件，與正本具同等效力。
         </div>
     </div>
 </div>
 
-<!-- Seal Canvas -->
 <canvas id="sealCanvas" width="100" height="320" style="display:none;"></canvas>
 
 <script>
-    // --- Init ---
     const { jsPDF } = window.jspdf;
     let signaturePad = null, currentSigner = null;
     let evidencePhotos = [];
@@ -561,31 +529,25 @@
         signaturePad = new SignaturePad(canvas, { minWidth: 1, maxWidth: 2.5, penColor: "black" });
     }
 
-    // --- Age Logic ---
     function checkAge(party) {
         const dobInput = document.getElementById(`dob${party}`);
         const repArea = document.getElementById(`repArea${party}`);
         const repSigBox = document.getElementById(`repSigBox${party}`);
         
         if(!dobInput.value) return;
-
         const dob = new Date(dobInput.value);
         const today = new Date();
         let age = today.getFullYear() - dob.getFullYear();
         const m = today.getMonth() - dob.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-            age--;
-        }
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) { age--; }
 
         if(age < 18) {
             repArea.classList.remove('hidden');
             repSigBox.classList.remove('hidden');
-            // Highlight
             repArea.scrollIntoView({behavior: 'smooth', block: 'center'});
         } else {
             repArea.classList.add('hidden');
             repSigBox.classList.add('hidden');
-            // Clear Rep data if hidden
             document.getElementById(`repName${party}`).value = "";
             document.getElementById(`repId${party}`).value = "";
             document.getElementById(`sigDataRep${party}`).value = "";
@@ -593,7 +555,6 @@
         }
     }
 
-    // --- Form Logic ---
     function toggleCustomType() {
         const isOther = document.getElementById('incidentType').value === '其他';
         document.getElementById('incidentTypeCustom').classList.toggle('hidden', !isOther);
@@ -603,23 +564,19 @@
         document.querySelectorAll('.mode-btn').forEach(b => {
             b.className = 'mode-btn border border-gray-200 p-3 rounded-lg text-sm text-gray-600 transition-all';
         });
-        
         let btnId = 'btnNoPay';
         if(mode === 'A_PAY_B') btnId = 'btnAPayB';
         else if(mode === 'B_PAY_A') btnId = 'btnBPayA';
 
         const btn = document.getElementById(btnId);
         btn.className = 'mode-btn border border-blue-500 bg-blue-50 p-3 rounded-lg text-sm font-bold text-blue-700 ring-2 ring-blue-200 transition-all';
-        
         document.getElementById('settleMode').value = mode;
         document.getElementById('moneySection').classList.toggle('hidden', mode === 'NO_PAY');
     }
 
     function selectInsurance(type) {
-        // Visual Feedback
         const exBox = document.getElementById('boxInsExclude');
         const inBox = document.getElementById('boxInsInclude');
-        
         if(type === 'exclude') {
             exBox.classList.add('selected');
             inBox.classList.remove('selected');
@@ -630,7 +587,6 @@
             document.querySelector('input[value="include"]').checked = true;
         }
     }
-    // Init default
     selectInsurance('exclude');
 
     function toggleBankInfo(show) {
@@ -645,7 +601,6 @@
             try {
                 const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${p.coords.latitude}&lon=${p.coords.longitude}&accept-language=zh-TW`);
                 const d = await r.json();
-                // Simplify address
                 let addr = d.address.road || d.address.suburb || "";
                 if(d.address.city) addr = d.address.city + addr;
                 else if(d.address.county) addr = d.address.county + addr;
@@ -654,7 +609,6 @@
         }, () => { alert("無法獲取位置，請手動輸入"); el.placeholder = "請輸入地點"; });
     }
 
-    // --- Signature ---
     function openSigModal(s) {
         currentSigner = s;
         const map = { 'A': '甲方 (駕駛人)', 'B': '乙方 (駕駛人)', 'RepA': '甲方 法定代理人', 'RepB': '乙方 法定代理人' };
@@ -668,7 +622,6 @@
         if(signaturePad.isEmpty()) return alert("請先簽名");
         const data = signaturePad.toDataURL();
         document.getElementById(`sigData${currentSigner}`).value = data;
-        
         const preview = document.getElementById(`previewSig${currentSigner}`);
         preview.innerHTML = `<img src="${data}" class="h-full object-contain">`;
         preview.classList.remove('border-dashed');
@@ -676,12 +629,10 @@
         closeSigModal();
     }
 
-    // --- Photos ---
     function handleMultiPhotos(input) {
         if (!input.files) return;
         const grid = document.getElementById('evidenceGrid');
         if(evidencePhotos.length === 0) grid.innerHTML = '';
-
         Array.from(input.files).forEach(f => {
             const r = new FileReader();
             r.onload = e => {
@@ -702,63 +653,37 @@
         }
     }
 
-    // --- REAL ID VALIDATION (Citizens + New Resident UI No.) ---
     function checkTWID(id) {
         id = id.toUpperCase();
-        // Regex for Format: Letter + (1,2,8,9) + 8 digits
-        if (!/^[A-Z][1289]\d{8}$/.test(id)) return { valid: false, msg: "格式錯誤 (需為英文字母+9碼數字)" };
-
-        // Letter Mapping
-        const letterMap = {
-            A: 10, B: 11, C: 12, D: 13, E: 14, F: 15, G: 16, H: 17, J: 18, K: 19, L: 20, M: 21,
-            N: 22, P: 23, Q: 24, R: 25, S: 26, T: 27, U: 28, V: 29, X: 30, Y: 31, W: 32, Z: 33,
-            I: 34, O: 35
-        };
-
+        if (!/^[A-Z][1289]\d{8}$/.test(id)) return { valid: false, msg: "格式錯誤 (英文字母+9碼數字)" };
+        const letterMap = { A: 10, B: 11, C: 12, D: 13, E: 14, F: 15, G: 16, H: 17, J: 18, K: 19, L: 20, M: 21, N: 22, P: 23, Q: 24, R: 25, S: 26, T: 27, U: 28, V: 29, X: 30, Y: 31, W: 32, Z: 33, I: 34, O: 35 };
         const n = letterMap[id[0]];
         if (!n) return { valid: false, msg: "首碼錯誤" };
-
         const n1 = Math.floor(n / 10);
         const n2 = n % 10;
         const d = id.substring(1).split('').map(Number);
-
-        // Weight Calculation
         const weights = [8, 7, 6, 5, 4, 3, 2, 1];
         let sum = n1 * 1 + n2 * 9;
-        
-        for (let i = 0; i < 8; i++) {
-            sum += d[i] * weights[i];
-        }
-
+        for (let i = 0; i < 8; i++) { sum += d[i] * weights[i]; }
         const checkDigit = (10 - (sum % 10)) % 10;
-        
-        if (checkDigit === d[8]) {
-            return { valid: true, msg: "" };
-        } else {
-            return { valid: false, msg: "檢查碼錯誤 (請確認數字有無誤植)" };
-        }
+        if (checkDigit === d[8]) return { valid: true, msg: "" };
+        else return { valid: false, msg: "檢查碼錯誤" };
     }
 
     function validateID(el) {
         const id = el.value.toUpperCase();
         el.value = id;
-        const errEl = document.getElementById('error' + el.id.charAt(0).toUpperCase() + el.id.slice(1)); // e.g., errorIdA
-
+        const errEl = document.getElementById('error' + el.id.charAt(0).toUpperCase() + el.id.slice(1));
         if(!id) {
             el.classList.remove('border-red-500', 'bg-red-50', 'border-green-500');
             if(errEl) errEl.style.display = 'none';
             return;
         }
-
         const result = checkTWID(id);
-
         if (!result.valid) {
             el.classList.add('border-red-500', 'bg-red-50');
             el.classList.remove('border-green-500');
-            if(errEl) {
-                errEl.innerText = result.msg;
-                errEl.style.display = 'block';
-            }
+            if(errEl) { errEl.innerText = result.msg; errEl.style.display = 'block'; }
         } else {
             el.classList.remove('border-red-500', 'bg-red-50');
             el.classList.add('border-green-500');
@@ -766,50 +691,36 @@
         }
     }
 
-    // --- UPDATED PDF Generation Logic ---
     function generateSeal() {
         const c = document.getElementById('sealCanvas');
         const ctx = c.getContext('2d');
-        const cx = 50, cy = 160; // Center of Seal
-
+        const cx = 50, cy = 160; 
         ctx.clearRect(0, 0, 100, 320);
-        
-        // 1. Draw Outer Oval (Heavier Border)
         ctx.beginPath();
         ctx.ellipse(cx, cy, 38, 130, 0, 0, 2 * Math.PI);
-        ctx.fillStyle = 'rgba(220, 38, 38, 0.15)'; // Darker background red
+        ctx.fillStyle = 'rgba(220, 38, 38, 0.15)'; 
         ctx.fill();
-        ctx.lineWidth = 5; // Thicker border
-        ctx.strokeStyle = '#b91c1c'; // Deep Red
+        ctx.lineWidth = 5; 
+        ctx.strokeStyle = '#b91c1c'; 
         ctx.stroke();
-        
-        // 2. Draw Inner Oval
         ctx.beginPath();
         ctx.ellipse(cx, cy, 34, 126, 0, 0, 2 * Math.PI);
         ctx.lineWidth = 1;
         ctx.strokeStyle = '#b91c1c';
         ctx.stroke();
-
-        // 3. Draw Text - Use System Font to avoid "Missing Text" issue
         ctx.save();
         ctx.translate(cx, cy);
-        ctx.rotate(-Math.PI / 2); // Vertical text
-        
-        // Use safe fonts: Microsoft JhengHei, sans-serif
+        ctx.rotate(-Math.PI / 2); 
         ctx.font = "bold 24px 'Microsoft JhengHei', 'Heiti TC', sans-serif";
         ctx.fillStyle = "#b91c1c";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        
-        // Add stars to look official
         ctx.fillText("★ 騎縫章・和解契約 ★", 0, 0);
         ctx.restore();
-
         return c.toDataURL();
     }
 
     async function generatePDF() {
-        // Validation
         if(!document.getElementById('nameA').value || !document.getElementById('nameB').value) return alert("請填寫雙方姓名");
         if(!document.getElementById('sigDataA').value) return alert("甲方尚未簽名");
         if(!document.getElementById('sigDataB').value) return alert("乙方尚未簽名");
@@ -821,7 +732,6 @@
 
         document.getElementById('loader').style.display = 'flex';
 
-        // Populate Data
         const dateVal = document.getElementById('incidentDate').value;
         const refId = dateVal.replace(/-/g, '') + '-' + Math.floor(Math.random()*1000);
         document.getElementById('pdfRefId').innerText = refId;
@@ -841,7 +751,6 @@
         document.getElementById('pdfNameA').innerText = document.getElementById('nameA').value;
         document.getElementById('pdfIdA').innerText = document.getElementById('idA').value;
         document.getElementById('pdfPlateA').innerText = document.getElementById('plateA').value;
-        
         if(repA) {
             document.getElementById('pdfRepInfoA').classList.remove('hidden');
             document.getElementById('pdfRepNameA').innerText = document.getElementById('repNameA').value;
@@ -856,7 +765,6 @@
         document.getElementById('pdfNameB').innerText = document.getElementById('nameB').value;
         document.getElementById('pdfIdB').innerText = document.getElementById('idB').value;
         document.getElementById('pdfPlateB').innerText = document.getElementById('plateB').value;
-
         if(repB) {
             document.getElementById('pdfRepInfoB').classList.remove('hidden');
             document.getElementById('pdfRepNameB').innerText = document.getElementById('repNameB').value;
@@ -872,20 +780,16 @@
         const amt = document.getElementById('amount').value;
         const payMethod = document.querySelector('input[name="payMethod"]:checked').value;
         
-        // ================= INSURANCE LOGIC =================
         const insuranceMode = document.querySelector('input[name="insuranceOption"]:checked').value;
         const insuranceLi = document.getElementById('pdfInsuranceClause');
-        
         if (insuranceMode === 'exclude') {
             insuranceLi.innerHTML = `<strong>保險脫鉤條款（不含保險）：</strong>本和解金額<span class="text-red-600 font-bold">不包含</span>強制汽車責任保險及任意第三人責任保險之理賠。雙方同意由各自保險公司依約處理，但不得影響本和解書關於刑事責任拋棄之效力。`;
         } else {
             insuranceLi.innerHTML = `<strong>保險斷尾條款（含強制險/任意險）：</strong>本和解金額<span class="text-red-600 font-bold">已包含</span>強制汽車責任保險、第三人責任保險及其他一切保險理賠。雙方同意自行承擔各自損失，互不申請保險理賠，並拋棄對對方及其保險公司之一切請求權。`;
         }
-        // ==================================================
 
         let mainText = "";
         let subText = "";
-
         if(mode === 'NO_PAY') {
             mainText = "雙方自行負擔各自損失，互不要求賠償。";
         } else {
@@ -938,42 +842,32 @@
             const w = pdf.internal.pageSize.getWidth();
             const h = pdf.internal.pageSize.getHeight();
             
-            // Page 1
             const p1C = await html2canvas(document.getElementById('preview-page1'), { scale: 2, useCORS: true });
             pdf.addImage(p1C.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, w, h);
 
             if(hasPhotos) {
-                // Generate the new stronger Seal
                 const sealData = generateSeal();
-                const sealW = 26; // Width in mm
-                const sealH = 80; // Height in mm
+                const sealW = 26; 
+                const sealH = 80; 
                 const sealY = 140;
-
-                // Draw Right half of seal on Page 1
-                // We place the image at X=200 (Page width 210). 
-                // This shows the Left 10mm of the image on the Right edge.
                 pdf.addImage(sealData, 'PNG', 198, sealY, sealW, sealH);
-                
                 pdf.addPage();
-                
-                // Page 2
                 const p2C = await html2canvas(document.getElementById('preview-page2'), { scale: 2, useCORS: true });
                 pdf.addImage(p2C.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, w, h);
-
-                // Draw Left half of seal on Page 2
-                // We place the image at X=-13. 
-                // This shows the Right 13mm of the image on the Left edge.
                 pdf.addImage(sealData, 'PNG', -13, sealY, sealW, sealH);
             }
 
             const filename = `車禍和解書_${refId}.pdf`;
-            if (navigator.share) {
-                const blob = pdf.output('blob');
-                const file = new File([blob], filename, { type: "application/pdf" });
-                if(navigator.canShare({ files: [file] })) {
+            const blob = pdf.output('blob');
+            const file = new File([blob], filename, { type: "application/pdf" });
+
+            // === ANDROID PERMISSION FIX ===
+            if (navigator.share && navigator.canShare({ files: [file] })) {
+                try {
                     await navigator.share({ files: [file], title: '車禍和解書' });
-                } else {
-                    pdf.save(filename);
+                } catch (shareError) {
+                    console.warn("Share failed, falling back to download", shareError);
+                    pdf.save(filename); // Fallback for "Permission denied"
                 }
             } else {
                 pdf.save(filename);
